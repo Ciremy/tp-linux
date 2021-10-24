@@ -11,6 +11,7 @@ Pour la deuxième méthode nous allons faire un programme qui créer des copies 
 
 # Méthode 3
 Cette méthode consiste à remplir le disque dur de zéro. 
+
 `sudo dd if=/dev/zero of=/dev/sda`
 
 # Méthode 4
