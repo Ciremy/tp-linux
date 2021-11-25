@@ -188,16 +188,6 @@ user web;
 web         1794    1793  0 16:22 ?        00:00:00 nginx: worker process
 ```
 
-- pour ça, vous créerez vous-même un nouvel utilisateur sur le système : `web`
-  - référez-vous au [mémo des commandes](../../cours/memos/commandes.md) pour la création d'utilisateur
-  - l'utilisateur devra avoir un mot de passe, et un homedir défini explicitement à `/home/web`
-- un peu de conf à modifier dans le fichier de conf de NGINX pour définir le nouvel utilisateur en tant que celui qui lance le service
-  - vous me montrerez la conf effectuée dans le compte-rendu
-- n'oubliez pas de redémarrer le service pour que le changement prenne effet
-- vous prouverez avec une commande `ps` que le service tourne bien sous ce nouveau utilisateur
-
----
-
 🌞 **Changer l'emplacement de la racine Web**
 
 ```bash
