@@ -59,41 +59,46 @@ success
 
 🌞 **Configuration élémentaire de la base**
 
-> Il existe des tonnes de guides sur internet pour expliquer ce que fait cette commande et comment répondre aux questions, afin d'augmenter le niveau de sécurité de la base.
+```bash
+Set root password? [Y/n] Y
+#pour sécurisé les connexions non voulu
 
----
+Remove anonymous users? [Y/n] Y
+#pour empecher les connexions anonymes
+
+Disallow root login remotely? [Y/n] y
+#pour eviter les connexions distante de root
+
+Remove test database and access to it? [Y/n] Y
+#supprime la table de test qui est inutile
+
+Reload privilege tables now? [Y/n] y
+#rend effectif tout les changements
+```
 
 🌞 **Préparation de la base en vue de l'utilisation par NextCloud**
 
-- pour ça, il faut vous connecter à la base
-- il existe un utilisateur `root` dans la base de données, qui a tous les droits sur la base
-- si vous avez correctement répondu aux questions de `mysql_secure_installation`, vous ne pouvez utiliser le user `root` de la base de données qu'en vous connectant localement à la base
-- donc, sur la VM `db.tp5.linux` toujours :
-
 ```bash
-# Connexion à la base de données
-# L'option -p indique que vous allez saisir un mot de passe
-# Vous l'avez défini dans le mysql_secure_installation
-$ sudo mysql -u root -p
+[titi@db ~]$ sudo mysql -u root -p
+[sudo] password for titi:
+Enter password:
+
 ```
 
 Puis, dans l'invite de commande SQL :
 
 ```sql
-# Création d'un utilisateur dans la base, avec un mot de passe
-# L'adresse IP correspond à l'adresse IP depuis laquelle viendra les connexions. Cela permet de restreindre les IPs autorisées à se connecter.
-# Dans notre cas, c'est l'IP de web.tp5.linux
-# "meow" c'est le mot de passe :D
-CREATE USER 'nextcloud'@'10.5.1.11' IDENTIFIED BY 'meow';
+MariaDB [(none)]> CREATE USER 'nextcloud'@'10.5.1.11' IDENTIFIED BY 'meow';
+Query OK, 0 rows affected (0.001 sec)
 
-# Création de la base de donnée qui sera utilisée par NextCloud
-CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+MariaDB [(none)]> CREATE DATABASE IF NOT EXISTS nextcloud CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+Query OK, 1 row affected (0.001 sec)
 
-# On donne tous les droits à l'utilisateur nextcloud sur toutes les tables de la base qu'on vient de créer
-GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'10.5.1.11';
+MariaDB [(none)]> GRANT ALL PRIVILEGES ON nextcloud.* TO 'nextcloud'@'10.5.1.11';
+Query OK, 0 rows affected (0.001 sec)
 
-# Actualisation des privilèges
-FLUSH PRIVILEGES;
+MariaDB [(none)]> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.001 sec)
 ```
 
 ## 3. Test
@@ -113,31 +118,34 @@ Bah c'est parti ! Il nous faut juste un client pour nous connecter à la base de
 
 🌞 **Installez sur la machine `web.tp5.linux` la commande `mysql`**
 
-- vous utiliserez la commande `dnf provides` pour trouver dans quel paquet se trouve cette commande
+```bash
+[titi@web ~]$ sudo dnf install mysql
+[sudo] password for titi:
+Failed to set locale, defaulting to C.UTF-8
+Last metadata expiration check: 1:53:24 ago on Thu Nov 25 10:55:22 2021.
+Dependencies resolved.
+```
 
 🌞 **Tester la connexion**
 
-- utilisez la commande `mysql` depuis `web.tp5.linux` pour vous connecter à la base qui tourne sur `db.tp5.linux`
-- vous devrez préciser une option pour chacun des points suivants :
-  - l'adresse IP de la machine où vous voulez vous connectez `db.tp5.linux` : `10.5.1.12`
-  - le port auquel vous vous connectez
-  - l'utilisateur de la base de données sur lequel vous connecter : `nextcloud`
-  - l'option `-p` pour indiquer que vous préciserez un password
-    - vous ne devez PAS le préciser sur la ligne de commande
-    - sinon il y aurait un mot de passe en clair dans votre historique, c'est moche
-  - la base de données à laquelle vous vous connectez : `nextcloud`
-- une fois connecté à la base en tant que l'utilisateur `nextcloud` :
-  - effectuez un bête `SHOW TABLES;`
-  - simplement pour vous assurer que vous avez les droits de lecture
-  - et constater que la base est actuellement vide
+```bash
+[titi@web ~]$ sudo mysql -u nextcloud -p -P 3306 -D nextcloud -h 10.5.1.12
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 18
+Server version: 5.5.5-10.3.28-MariaDB MariaDB Server
 
-> Je veux donc dans le compte-rendu la commande `mysql` qui permet de se co depuis `web.tp5.linux` au service de base de données qui tourne sur `db.tp5.linux`, ainsi que le `SHOW TABLES`.
+Copyright (c) 2000, 2021, Oracle and/or its affiliates.
 
----
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
 
-C'est bon ? Ca tourne ? [**Go installer NextCloud maintenant !**](./web.md)
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-![To the cloud](./pics/to_the_cloud.jpeg)
+mysql> SHOW TABLES;
+Empty set (0.00 sec)
+```
 
 # II. Setup Web
 
@@ -168,41 +176,100 @@ Dependencies resolved.
 🌞 **Analyse du service Apache**
 
 ```bash
+[titi@web ~]$ systemctl start httpd
+==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-units ====
+Authentication is required to start 'httpd.service'.
+Authenticating as: titi
+Password:
+==== AUTHENTICATION COMPLETE ====
+[titi@web ~]$ systemctl enable httpd
+==== AUTHENTICATING FOR org.freedesktop.systemd1.manage-unit-files ====
+Authentication is required to manage system service or unit files.
+Authenticating as: titi
+Password:
+==== AUTHENTICATION COMPLETE ====
+Created symlink /etc/systemd/system/multi-user.target.wants/httpd.service → /usr/lib/systemd/system/httpd.service.
+==== AUTHENTICATING FOR org.freedesktop.systemd1.reload-daemon ====
+Authentication is required to reload the systemd state.
+Authenticating as: titi
+Password:
+==== AUTHENTICATION COMPLETE ====
 
+[titi@web ~]$ ps -ef | grep httpd
+root       27028       1  0 13:00 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     27029   27028  0 13:00 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     27030   27028  0 13:00 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     27031   27028  0 13:00 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     27032   27028  0 13:00 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+titi       27304    1566  0 13:01 pts/0    00:00:00 grep --color=auto httpd
+
+[titi@web ~]$ sudo ss -altnp
+LISTEN       0             128                              *:80                            *:*           users:(("httpd",pid=27032,fd=4),("httpd",pid=27031,fd=4),("httpd",pid=27030,fd=4),("httpd",pid=27028,fd=4))
 ```
-
-- lancez le service `httpd` et activez le au démarrage
-- isolez les processus liés au service `httpd`
-- déterminez sur quel port écoute Apache par défaut
-- déterminez sous quel utilisateur sont lancés les processus Apache
-
----
 
 🌞 **Un premier test**
 
-- ouvrez le port d'Apache dans le firewall
-- testez, depuis votre PC, que vous pouvez accéder à la page d'accueil par défaut d'Apache
-  - avec une commande `curl`
-  - avec votre navigateur Web
+```bash
+[titi@web ~]$ sudo firewall-cmd --add-port=80/tcp --permanent
+success
+
+[titi@web ~]$ sudo firewall-cmd --reload
+success
+
+curl 10.5.1.11
+<!doctype html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+
+```
 
 ### B. PHP
-
-NextCloud a besoin d'une version bien spécifique de PHP.  
-Suivez **scrupuleusement** les instructions qui suivent pour l'installer.
 
 🌞 **Installer PHP**
 
 ```bash
-# ajout des dépôts EPEL
-$ sudo dnf install epel-release
-$ sudo dnf update
-# ajout des dépôts REMI
-$ sudo dnf install https://rpms.remirepo.net/enterprise/remi-release-8.rpm
-$ dnf module enable php:remi-7.4
+[titi@web ~]$ sudo dnf install epel-release
+...
+Installed:
+  epel-release-8-13.el8.noarch
 
-# install de PHP et de toutes les libs PHP requises par NextCloud
-$ sudo dnf install zip unzip libxml2 openssl php74-php php74-php-ctype php74-php-curl php74-php-gd php74-php-iconv php74-php-json php74-php-libxml php74-php-mbstring php74-php-openssl php74-php-posix php74-php-session php74-php-xml php74-php-zip php74-php-zlib php74-php-pdo php74-php-mysqlnd php74-php-intl php74-php-bcmath php74-php-gmp
+[titi@web ~]$ sudo dnf update
+Nothing to do.
+Complete!
+
+[titi@web ~]$ sudo dnf install https://rpms.remirepo.net/enterprise/remi-release-8.rpm
+...
+Installed:
+  remi-release-8.5-1.el8.remi.noarch
+
+[titi@web ~]$ dnf module enable php:remi-7.4
+
+Complete!
+
+[titi@web ~]$ sudo dnf install zip unzip libxml2 openssl php74-php php74-php-ctype php74-php-curl php74-php-gd php74-php-iconv php74-php-json php74-php-libxml php74-php-mbstring php74-php-openssl php74-php-posix php74-php-session php74-php-xml php74-php-zip php74-php-zlib php74-php-pdo php74-php-mysqlnd php74-php-intl php74-php-bcmath php74-php-gmp
+
+Installed:
+  environment-modules-4.5.2-1.el8.x86_64              gd-2.2.5-7.el8.x86_64
+  jbigkit-libs-2.1-14.el8.x86_64                      libXpm-3.5.12-8.el8.x86_64
+  libicu69-69.1-1.el8.remi.x86_64                     libjpeg-turbo-1.5.3-12.el8.x86_64
+  libsodium-1.0.18-2.el8.x86_64                       libtiff-4.0.9-20.el8.x86_64
+  libwebp-1.0.0-5.el8.x86_64                          oniguruma5php-6.9.7.1-1.el8.remi.x86_64
+  php74-libzip-1.8.0-1.el8.remi.x86_64                php74-php-7.4.26-1.el8.remi.x86_64
+  php74-php-bcmath-7.4.26-1.el8.remi.x86_64           php74-php-cli-7.4.26-1.el8.remi.x86_64
+  php74-php-common-7.4.26-1.el8.remi.x86_64           php74-php-fpm-7.4.26-1.el8.remi.x86_64
+  php74-php-gd-7.4.26-1.el8.remi.x86_64               php74-php-gmp-7.4.26-1.el8.remi.x86_64
+  php74-php-intl-7.4.26-1.el8.remi.x86_64             php74-php-json-7.4.26-1.el8.remi.x86_64
+  php74-php-mbstring-7.4.26-1.el8.remi.x86_64         php74-php-mysqlnd-7.4.26-1.el8.remi.x86_64
+  php74-php-opcache-7.4.26-1.el8.remi.x86_64          php74-php-pdo-7.4.26-1.el8.remi.x86_64
+  php74-php-pecl-zip-1.20.0-1.el8.remi.x86_64         php74-php-process-7.4.26-1.el8.remi.x86_64
+  php74-php-sodium-7.4.26-1.el8.remi.x86_64           php74-php-xml-7.4.26-1.el8.remi.x86_64
+  php74-runtime-1.0-3.el8.remi.x86_64                 scl-utils-1:2.0.2-14.el8.x86_64
+  tcl-1:8.6.8-2.el8.x86_64
 ```
+
+NextCloud a besoin d'une version bien spécifique de PHP.  
+Suivez **scrupuleusement** les instructions qui suivent pour l'installer.
 
 ## 2. Conf Apache
 
@@ -228,13 +295,15 @@ Le fichier de conf principal a une ligne qui inclut tous les fichiers de conf co
 
 - mettez en évidence, dans le fichier de conf principal d'Apache, la ligne qui inclut tout ce qu'il y a dans le dossier de _drop-in_
 
+```bash
+[titi@web ~]$ sudo cat /etc/httpd/conf/httpd.conf | grep conf.d
+IncludeOptional conf.d/*.conf
+```
+
 🌞 **Créer un VirtualHost qui accueillera NextCloud**
 
-- créez un nouveau fichier dans le dossier de _drop-in_
-  - attention, il devra être correctement nommé (l'extension) pour être inclus par le fichier de conf principal
-- ce fichier devra avoir le contenu suivant :
-
-```apache
+```bash
+[titi@web ~]$ cat /etc/httpd/conf.d/virtualhost.conf
 <VirtualHost *:80>
   DocumentRoot /var/www/nextcloud/html/  # on précise ici le dossier qui contiendra le site : la racine Web
   ServerName  web.tp5.linux  # ici le nom qui sera utilisé pour accéder à l'application
@@ -249,26 +318,28 @@ Le fichier de conf principal a une ligne qui inclut tous les fichiers de conf co
     </IfModule>
   </Directory>
 </VirtualHost>
-```
 
-> N'oubliez pas de redémarrer le service à chaque changement de la configuration, pour que les changements prennent effet.
+[titi@web ~]$ systemctl restart httpd
+
+```
 
 🌞 **Configurer la racine web**
 
-- la racine Web, on l'a configurée dans Apache pour être le dossier `/var/www/nextcloud/html/`
-- creéz ce dossier
-- faites appartenir le dossier et son contenu à l'utilisateur qui lance Apache (commande `chown`, voir le [mémo commandes](../../cours/memos/commandes.md))
+```bash
+[titi@web ~]$ sudo mkdir /var/www/nextcloud
+[titi@web ~]$ sudo mkdir /var/www/nextcloud/html/
 
-> Jusqu'à la fin du TP, tout le contenu de ce dossier doit appartenir à l'utilisateur qui lance Apache. C'est strictement nécessaire pour qu'Apache puisse lire le contenu, et le servir aux clients.
+[titi@web www]$ sudo chown apache nextcloud
+[titi@web www]$ sudo chown apache nextcloud/html/
+```
 
 🌞 **Configurer PHP**
 
-- dans l'install de NextCloud, PHP a besoin de conaître votre timezone (fuseau horaire)
-- pour récupérer la timezone actuelle de la machine, utilisez la commande `timedatectl` (sans argument)
-- modifiez le fichier `/etc/opt/remi/php74/php.ini` :
-  - changez la ligne `;date.timezone =`
-  - par `date.timezone = "<VOTRE_TIMEZONE>"`
-  - par exemple `date.timezone = "Europe/Paris"`
+```bash
+[titi@web www]$ cat /etc/opt/remi/php74/php.ini | grep date.timezone
+date.timezone = "America/New_York"
+#(j'ai miss l'install je suis à l'heure de NY ps: pardon)
+```
 
 ## 3. Install NextCloud
 
@@ -277,22 +348,44 @@ On dit "installer NextCloud" mais en fait c'est juste récupérer les fichiers P
 🌞 **Récupérer Nextcloud**
 
 ```bash
-# Petit tips : la commande cd sans argument permet de retourner dans votre homedir
-$ cd
-
-# La commande curl -SLO permet de rapidement télécharger un fichier, en HTTP/HTTPS, dans le dossier courant
-$ curl -SLO https://download.nextcloud.com/server/releases/nextcloud-21.0.1.zip
-
-$ ls
+[titi@web ~]$ curl -SLO https://download.nextcloud.com/server/releases/nextcloud-21.0.1.zip
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  148M  100  148M    0     0  3086k      0  0:00:49  0:00:49 --:--:-- 3500k
+[titi@web ~]$ ls
 nextcloud-21.0.1.zip
 ```
 
 🌞 **Ranger la chambre**
 
-- extraire le contenu de NextCloud (beh ui on a récup un `.zip`)
-- déplacer tout le contenu dans la racine Web
-  - n'oubliez pas de gérer les permissions de tous les fichiers déplacés ;)
-- supprimer l'archive
+```bash
+[titi@web html]$ sudo unzip nextcloud-21.0.1.zip -d /var/www/nextcloud/html/
+
+[titi@web html]$ ls
+nextcloud
+[titi@web html]$ mv nextcloud/ /var/www/nextcloud/
+mv: cannot move 'nextcloud/' to '/var/www/nextcloud/nextcloud': Permission denied
+[titi@web html]$ sudo mv nextcloud/ /var/www/nextcloud/
+[titi@web html]$ cd ..
+[titi@web nextcloud]$ ls
+html  nextcloud
+[titi@web nextcloud]$ sudo rm html/
+rm: cannot remove 'html/': Is a directory
+[titi@web nextcloud]$ sudo rm -d  html/
+[titi@web nextcloud]$ ls
+nextcloud
+[titi@web nextcloud]$ mv nextcloud html
+mv: cannot move 'nextcloud' to 'html': Permission denied
+[titi@web nextcloud]$ sudo mv nextcloud html
+[titi@web nextcloud]$ ls
+html
+[titi@web nextcloud]$ cd html/
+
+[titi@web ~]$ rm nextcloud-21.0.1.zip
+
+[titi@web www]$ sudo chown apache -R nextcloud/
+
+```
 
 ## 4. Test
 
@@ -329,29 +422,3 @@ Emplacement du fichier `hosts` :
 
 - MacOS/Linux : `/etc/hosts`
 - Windows : `c:\windows\system32\drivers\etc\hosts`
-
----
-
-🌞 **Modifiez le fichier `hosts` de votre PC**
-
-- ajoutez la ligne : `10.5.1.11 web.tp5.linux`
-
-🌞 **Tester l'accès à NextCloud et finaliser son install'**
-
-- ouvrez votre navigateur Web sur votre PC
-- rdv à l'URL `http://web.tp5.linux`
-- vous devriez avoir la page d'accueil de NextCloud
-- ici deux choses :
-  - les deux champs en haut pour créer un user admin au sein de NextCloud
-  - le bouton "Configure the database" en bas
-    - sélectionnez "MySQL/MariaDB"
-    - entrez les infos pour que NextCloud sache comment se connecter à votre serveur de base de données
-    - c'est les infos avec lesquelles vous avez validé à la main le bon fonctionnement de MariaDB (c'était avec la commande `mysql`)
-
----
-
-**🔥🔥🔥 Baboom ! Un beau NextCloud.**
-
-Naviguez un peu, faites vous plais', vous avez votre propre DropBox n_n
-
-![Well Done](./pics/well_done.jpg)
