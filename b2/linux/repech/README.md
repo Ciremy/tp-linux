@@ -112,12 +112,11 @@ success
 [ciremy@web ~]$ sudo mount 10.102.1.11:/backup/music /backup
 ```
 
-- création d'un répertoire `/backup`
-- référez-vous au [à la partie II du module 4 du TP3](../3/4-backup/README.md#ii-nfs) pour + de détails
-  - vous devez monter le dossier `/backups/music/` qui se trouve sur `backup.peche.linux`
-  - et le rendre accessible sur le dossier `/backup`
-
 ## Script de backup
+
+Malheureusement je n'ai pas réussi à faire le script
+
+## Timer
 
 ```
 [ciremy@web ~]$ sudo cat /etc/systemd/system/backup.timer
